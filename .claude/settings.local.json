@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_metrics.py -v)",
+      "Bash(pip install *)",
+      "Bash(pip show *)",
+      "Bash(pip list *)",
+      "Bash(python -c \"import scikit_learn\")",
+      "Bash(python -c \"import sklearn; print\\(sklearn.__version__\\)\")",
+      "Bash(python -c \"import sklearn; print\\('sklearn', sklearn.__version__\\)\")",
+      "Bash(python -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(python -m pytest --version)",
+      "Bash(python -m pip install --user scikit-learn numpy pytest ruff)",
+      "Bash(python -c \"import sklearn, numpy, pytest\")",
+      "Bash(python -m pip cache list)",
+      "Bash(where python *)",
+      "Bash(conda info *)",
+      "Bash(C:/Users/User/AppData/Local/Programs/Python/Python312/python.exe *)",
+      "Bash(python -c \"import sklearn, numpy, cv2\")",
+      "Bash(python -m ruff check src/ tests/ scripts/)",
+      "Bash(python *)",
+      "Bash(ls \"$\\(python -m pip cache dir\\)/wheels/cp/314\")",
+      "Bash(ls \"$\\(python -m pip cache dir\\)/http-v2\")",
+      "Bash(xargs -I{} sh -c 'echo -n \"$\\(wc -c < \"{}\"\\): \"; echo \"{}\"')",
+      "Bash(xargs wc *)"
+    ]
+  }
+}
