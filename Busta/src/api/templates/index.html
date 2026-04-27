@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Malaria Cell Screening</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .header { margin-bottom: 24px; }
+
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 9px;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: #4f46e5;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 10px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 16px;
+    }
+
+    .upload-zone:hover, .upload-zone.has-file {
+      border-color: #4f46e5;
+      background: #f5f3ff;
+    }
+
+    .upload-zone input[type="file"] { display: none; }
+
+    .upload-icon { font-size: 2rem; margin-bottom: 10px; }
+
+    .upload-label {
+      display: block;
+      font-weight: 600;
+      color: #4f46e5;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .file-hint {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+
+    .file-selected {
+      font-size: 0.85rem;
+      color: #374151;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #4f46e5;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn:hover:not(:disabled) { background: #4338ca; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 24px;
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 10px;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Diagnose result */
+    .result {
+      margin-top: 24px;
+      padding: 24px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .result.parasitized {
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+    }
+
+    .result.uninfected {
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+    }
+
+    .result-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .parasitized .result-badge { background: #fee2e2; color: #b91c1c; }
+    .uninfected  .result-badge { background: #dcfce7; color: #15803d; }
+
+    .result-label {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .parasitized .result-label { color: #dc2626; }
+    .uninfected  .result-label { color: #16a34a; }
+
+    .result-confidence {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    /* Grad-CAM overlay image */
+    .heatmap-container {
+      margin-top: 24px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid #e5e7eb;
+      background: #f9fafb;
+      text-align: center;
+    }
+
+    .heatmap-container img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 9px;
+    }
+
+    .heatmap-caption {
+      font-size: 0.8rem;
+      color: #6b7280;
+      padding: 8px;
+    }
+
+    /* Error */
+    .error-box {
+      margin-top: 24px;
+      padding: 16px 18px;
+      background: #fff7ed;
+      border: 1.5px solid #fed7aa;
+      border-radius: 10px;
+      color: #9a3412;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>Malaria Cell Screening</h1>
+    <p class="subtitle">Upload a thin blood smear microscopy image to classify it as Parasitized or Uninfected.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-diagnose" type="button">Diagnose</button>
+    <button class="tab-btn" id="tab-explain" type="button">Explain</button>
+  </div>
+
+  <!-- Diagnose panel -->
+  <div class="tab-panel active" id="panel-diagnose">
+    <form id="diagnose-form">
+      <div class="upload-zone" id="diagnose-zone">
+        <input type="file" id="diagnose-input" accept=".png,.jpg,.jpeg,.bmp">
+        <div class="upload-icon">&#128247;</div>
+        <label for="diagnose-input" class="upload-label">Choose image</label>
+        <p class="file-hint">PNG, JPG, JPEG or BMP</p>
+        <p class="file-selected hidden" id="diagnose-file-name"></p>
+      </div>
+      <button type="submit" class="btn" id="diagnose-btn" disabled>Analyse</button>
+    </form>
+
+    <div class="loading hidden" id="diagnose-loading">
+      <div class="spinner"></div>
+      <span>Analysing image&hellip;</span>
+    </div>
+
+    <div class="result hidden" id="diagnose-result">
+      <div class="result-badge" id="result-badge"></div>
+      <div class="result-label" id="result-label"></div>
+      <div class="result-confidence" id="result-confidence"></div>
+    </div>
+
+    <div class="error-box hidden" id="diagnose-error"></div>
+  </div>
+
+  <!-- Explain panel -->
+  <div class="tab-panel" id="panel-explain">
+    <form id="explain-form">
+      <div class="upload-zone" id="explain-zone">
+        <input type="file" id="explain-input" accept=".png,.jpg,.jpeg,.bmp">
+        <div class="upload-icon">&#128269;</div>
+        <label for="explain-input" class="upload-label">Choose image</label>
+        <p class="file-hint">PNG, JPG, JPEG or BMP</p>
+        <p class="file-selected hidden" id="explain-file-name"></p>
+      </div>
+      <button type="submit" class="btn" id="explain-btn" disabled>Generate Heatmap</button>
+    </form>
+
+    <div class="loading hidden" id="explain-loading">
+      <div class="spinner"></div>
+      <span>Generating Grad-CAM heatmap&hellip;</span>
+    </div>
+
+    <div class="heatmap-container hidden" id="explain-result">
+      <img id="heatmap-img" src="" alt="Grad-CAM heatmap overlay">
+      <p class="heatmap-caption">Grad-CAM activation map — highlighted regions influenced the prediction most.</p>
+    </div>
+
+    <div class="error-box hidden" id="explain-error"></div>
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  const tabDiagnose = document.getElementById('tab-diagnose');
+  const tabExplain  = document.getElementById('tab-explain');
+  const panelDiagnose = document.getElementById('panel-diagnose');
+  const panelExplain  = document.getElementById('panel-explain');
+
+  tabDiagnose.addEventListener('click', () => {
+    tabDiagnose.classList.add('active');
+    tabExplain.classList.remove('active');
+    panelDiagnose.classList.add('active');
+    panelExplain.classList.remove('active');
+  });
+
+  tabExplain.addEventListener('click', () => {
+    tabExplain.classList.add('active');
+    tabDiagnose.classList.remove('active');
+    panelExplain.classList.add('active');
+    panelDiagnose.classList.remove('active');
+  });
+
+  // --- Diagnose tab ---
+  const diagnoseForm    = document.getElementById('diagnose-form');
+  const diagnoseInput   = document.getElementById('diagnose-input');
+  const diagnoseBtn     = document.getElementById('diagnose-btn');
+  const diagnoseZone    = document.getElementById('diagnose-zone');
+  const diagnoseFileName = document.getElementById('diagnose-file-name');
+  const diagnoseLoading = document.getElementById('diagnose-loading');
+  const diagnoseResult  = document.getElementById('diagnose-result');
+  const resultBadge     = document.getElementById('result-badge');
+  const resultLabel     = document.getElementById('result-label');
+  const resultConf      = document.getElementById('result-confidence');
+  const diagnoseError   = document.getElementById('diagnose-error');
+
+  diagnoseInput.addEventListener('change', () => {
+    clearDiagnose();
+    if (diagnoseInput.files.length) {
+      diagnoseFileName.textContent = diagnoseInput.files[0].name;
+      diagnoseFileName.classList.remove('hidden');
+      diagnoseZone.classList.add('has-file');
+      diagnoseBtn.disabled = false;
+    } else {
+      diagnoseFileName.classList.add('hidden');
+      diagnoseZone.classList.remove('has-file');
+      diagnoseBtn.disabled = true;
+    }
+  });
+
+  diagnoseForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!diagnoseInput.files.length) return;
+    clearDiagnose();
+    diagnoseLoading.classList.remove('hidden');
+    diagnoseBtn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('image', diagnoseInput.files[0]);
+
+    try {
+      const resp = await fetch('/api/predict', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showDiagnoseError(data.error || 'Prediction failed.');
+      } else {
+        showDiagnoseResult(data);
+      }
+    } catch (err) {
+      showDiagnoseError('Network error: ' + err.message);
+    } finally {
+      diagnoseLoading.classList.add('hidden');
+      diagnoseBtn.disabled = false;
+    }
+  });
+
+  function showDiagnoseResult(data) {
+    const isParasitized = data.label === 1;
+    const cls = isParasitized ? 'parasitized' : 'uninfected';
+    diagnoseResult.className = 'result ' + cls;
+    resultBadge.textContent = isParasitized ? 'Detected' : 'Clear';
+    resultLabel.textContent = data.prediction;
+    resultConf.textContent = 'Confidence: ' + (data.confidence * 100).toFixed(1) + '%';
+    diagnoseResult.classList.remove('hidden');
+  }
+
+  function showDiagnoseError(msg) {
+    diagnoseError.textContent = msg;
+    diagnoseError.classList.remove('hidden');
+  }
+
+  function clearDiagnose() {
+    diagnoseResult.classList.add('hidden');
+    diagnoseError.classList.add('hidden');
+  }
+
+  // --- Explain tab ---
+  const explainForm     = document.getElementById('explain-form');
+  const explainInput    = document.getElementById('explain-input');
+  const explainBtn      = document.getElementById('explain-btn');
+  const explainZone     = document.getElementById('explain-zone');
+  const explainFileName = document.getElementById('explain-file-name');
+  const explainLoading  = document.getElementById('explain-loading');
+  const explainResult   = document.getElementById('explain-result');
+  const heatmapImg      = document.getElementById('heatmap-img');
+  const explainError    = document.getElementById('explain-error');
+
+  explainInput.addEventListener('change', () => {
+    clearExplain();
+    if (explainInput.files.length) {
+      explainFileName.textContent = explainInput.files[0].name;
+      explainFileName.classList.remove('hidden');
+      explainZone.classList.add('has-file');
+      explainBtn.disabled = false;
+    } else {
+      explainFileName.classList.add('hidden');
+      explainZone.classList.remove('has-file');
+      explainBtn.disabled = true;
+    }
+  });
+
+  explainForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!explainInput.files.length) return;
+    clearExplain();
+    explainLoading.classList.remove('hidden');
+    explainBtn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('image', explainInput.files[0]);
+
+    try {
+      const resp = await fetch('/api/gradcam', { method: 'POST', body: fd });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({ error: 'Request failed.' }));
+        showExplainError(data.error || 'Heatmap generation failed.');
+      } else {
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        if (heatmapImg.src && heatmapImg.src.startsWith('blob:')) {
+          URL.revokeObjectURL(heatmapImg.src);
+        }
+        heatmapImg.src = url;
+        explainResult.classList.remove('hidden');
+      }
+    } catch (err) {
+      showExplainError('Network error: ' + err.message);
+    } finally {
+      explainLoading.classList.add('hidden');
+      explainBtn.disabled = false;
+    }
+  });
+
+  function showExplainError(msg) {
+    explainError.textContent = msg;
+    explainError.classList.remove('hidden');
+  }
+
+  function clearExplain() {
+    explainResult.classList.add('hidden');
+    explainError.classList.add('hidden');
+  }
+</script>
+</body>
+</html>

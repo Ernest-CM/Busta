@@ -3,6 +3,7 @@ from typing import Iterable, List, Sequence, Tuple
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from src.data.ingestion import ImageRecord, discover_image_records, split_records
 from src.utils.config import LABEL_MAP, DataConfig, PreprocessConfig
@@ -25,6 +26,10 @@ class Preprocessor:
         image = self._read_image(Path(image_path))
         return self.preprocess_array(image)
 
+    def preprocess_single(self, image_path: Path | str) -> np.ndarray:
+        """Return shape (1, H, W, 3) float32 array ready for model.predict()."""
+        return np.expand_dims(self.preprocess_image(image_path), axis=0)
+
     def preprocess_array(self, image_rgb: np.ndarray) -> np.ndarray:
         image = image_rgb
         image = self._resize(image)
@@ -40,7 +45,8 @@ class Preprocessor:
         labels: List[int] = []
         skipped_paths: List[Path] = []
 
-        for record in records:
+        record_list = list(records)
+        for record in tqdm(record_list, desc="Preprocessing images", unit="img"):
             try:
                 processed = self.preprocess_image(record.path)
                 processed_images.append(processed)

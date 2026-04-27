@@ -1,141 +1,142 @@
 # AI-Driven Malaria Screening and Diagnosis Support System
 
-Modular ML pipeline for malaria cell-image classification using the NIH thin-blood-smear dataset.
-
-## Project structure
-
-```
-src/data/           dataset ingestion and split utilities
-src/preprocessing/  deterministic preprocessing (resize, denoise, normalize)
-src/models/         CNN definition, training loop, inference loader
-src/evaluation/     metrics and evaluation utilities
-src/api/            Flask prediction API
-src/utils/          shared config and I/O helpers
-tests/              unit + integration tests
-scripts/            runnable entry points
-```
-
-## Label mapping (fixed contract)
-
-| Folder name  | Label |
-|---|---|
-| Parasitized  | 1 |
-| Uninfected   | 0 |
-
-## Preprocessor output contract
-
-| Property | Value |
-|---|---|
-| Shape | `(N, H, W, 3)` batch / `(H, W, 3)` single |
-| dtype | `float32` |
-| Color order | RGB |
-| Value range | `[0.0, 1.0]` |
+[![CI](https://github.com/Creator/Busta/actions/workflows/ci.yml/badge.svg)](https://github.com/Creator/Busta/actions/workflows/ci.yml)
 
 ---
 
-## Python version
+## Project Overview
 
-TensorFlow currently has no wheel for Python 3.13+. Training and the API server require **Python 3.9 – 3.12**. Tests that only exercise preprocessing and metrics run on any Python ≥ 3.9 (TensorFlow tests are auto-skipped via `pytest.importorskip` when TF is unavailable).
+An end-to-end deep learning pipeline for classifying thin blood-smear microscopy images as *Parasitized* or *Uninfected* using the NIH Cell Image dataset. The system provides a baseline CNN, a MobileNetV2 transfer-learning model with two-stage fine-tuning, a rate-limited Flask REST API with Grad-CAM explainability, and a single-page web UI — all containerised with Docker.
+
+---
+
+## System Architecture
+
+```
+NIH Data (data/raw/cell_images/)
+        │
+        ▼
+  Preprocessor
+  (resize 224×224 · median denoise · [0,1] normalize)
+        │
+        ├──────────────────────────┐
+        ▼                          ▼
+  Baseline CNN              MobileNetV2
+  (3-block conv)        (frozen base → fine-tune)
+        │                          │
+        └──────────┬───────────────┘
+                   ▼
+             Flask API  (:5000)
+         /api/predict  /api/gradcam  /api/health
+                   │
+                   ▼
+              Web UI  (/)
+         Diagnose tab · Explain (Grad-CAM) tab
+```
+
+---
 
 ## Setup
 
-All commands below assume the working directory is `Busta/` (the project root containing `src/`).
+**Python requirement:** 3.9 – 3.12 (TensorFlow has no wheel for Python 3.13+).
 
 ```bash
+# 1. Create and activate a virtual environment (recommended)
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # dev/test dependencies
+pip install -r requirements-dev.txt   # dev/test tools
+
+# 3. Place the NIH dataset at:
+#    data/raw/cell_images/Parasitized/   ← .png files
+#    data/raw/cell_images/Uninfected/    ← .png files
 ```
+
+Download the dataset from [Kaggle — Cell Images for Detecting Malaria](https://www.kaggle.com/datasets/iarunava/cell-images-for-detecting-malaria).
 
 ---
 
-## Data
+## Running the Pipeline
 
-Download the [NIH Malaria Cell Images dataset](https://www.kaggle.com/datasets/iarunava/cell-images-for-detecting-malaria) and place it at:
-
-```
-data/raw/cell_images/
-    Parasitized/   ← .png files here
-    Uninfected/    ← .png files here
-```
-
----
-
-## Training
+All commands assume the working directory is `Busta/` (the project root containing `src/`).
 
 ```bash
+# Train baseline CNN (saves model + metrics to models_artifacts/)
 python scripts/run_training.py
-```
 
-Artifacts are saved to `models_artifacts/`:
+# Train MobileNetV2 transfer model (2-stage fine-tuning)
+python scripts/run_transfer_training.py --epochs 10 --fine-tune-epochs 5
 
-| File | Contents |
-|---|---|
-| `baseline_cnn.keras` | Saved Keras model |
-| `training_history.json` | Per-epoch loss/accuracy/AUC |
-| `evaluation_metrics.json` | Test-set accuracy, precision, recall, F1, ROC-AUC |
-| `confusion_matrix.csv` | 2×2 confusion matrix |
+# Re-run evaluation on the held-out test split (saves PNG charts + metrics.json)
+python scripts/run_evaluation.py
 
----
+# Benchmark all .keras models and produce a comparison table
+python scripts/run_benchmark.py
 
-## API server
-
-Requires a trained model at `models_artifacts/baseline_cnn.keras`.
-
-```bash
+# Start the Flask API server (requires a trained model)
 python scripts/run_api.py
 ```
 
-Server listens on `http://127.0.0.1:5000`.
+---
 
-### Endpoints
+## API Reference
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/health` | Health check |
-| POST | `/api/predict` | Predict from uploaded image |
+| Method | Path | Description | Request | Response |
+|--------|------|-------------|---------|----------|
+| GET | `/api/health` | Liveness check | — | `{"status":"ok","model_loaded":true}` |
+| POST | `/api/predict` | Binary classification | `multipart/form-data` field `image` (PNG/JPG/JPEG/BMP, ≤ 8 MB) | `{"prediction":"Parasitized","confidence":0.92,"label":1}` |
+| POST | `/api/gradcam` | Grad-CAM heatmap overlay | `multipart/form-data` field `image` (PNG/JPG/JPEG/BMP, ≤ 8 MB) | PNG image bytes |
 
-**Predict example (curl):**
+**Rate limits:** `/api/predict` and `/api/gradcam` are capped at **10 requests / minute** per IP address. Exceeding the limit returns HTTP 429 `{"error":"rate limit exceeded"}`.
 
+**Curl example:**
 ```bash
-curl -X POST http://127.0.0.1:5000/api/predict \
-  -F "image=@/path/to/cell_image.png"
-```
-
-**Response:**
-
-```json
-{
-  "prediction": 1,
-  "label": "Parasitized",
-  "probability_parasitized": 0.9123
-}
+curl -X POST http://localhost:5000/api/predict -F "image=@cell.png"
 ```
 
 ---
 
-## Tests
+## Benchmark Results
 
-```bash
-pytest tests/ -v
-```
+Run `python scripts/run_benchmark.py` after training to populate real numbers.
 
-Expected output: all tests in `test_preprocessor.py`, `test_metrics.py`, and `test_model.py` pass.
+| Model | Accuracy | Precision | Recall | F1 | AUC |
+|-------|----------|-----------|--------|----|-----|
+| *(fill after training)* | — | — | — | — | — |
 
-The `test_training_smoke` test runs a full training cycle on 12 synthetic images at 32×32 resolution (1 epoch). It is slow on first run due to TensorFlow initialisation (~10–30 s depending on hardware).
-
----
-
-## Lint
-
-```bash
-ruff check src/ tests/ scripts/
-```
+> Fill with results from `scripts/run_benchmark.py` after training.
 
 ---
 
-## Risks and TODOs
+## Docker
 
-- **Patient-level leakage** — the current split is file-level. If multiple cells from the same patient appear in both splits, evaluation may be optimistic. Extend to patient-level split when patient IDs are available.
-- **No augmentation** — augmentation (flips, rotations) will be added in the next training phase to improve generalisation.
-- **Class imbalance** — the NIH dataset is roughly balanced; if a domain-shifted subset is used, consider weighted loss or oversampling.
-- **GPU/CPU determinism** — `tf.config.experimental.enable_op_determinism()` may raise on some CPU builds. If training fails, set `seed` only via `tf.keras.utils.set_random_seed`.
+```bash
+# Build the image
+docker build -t malaria-api .
+
+# Run with docker-compose (mounts models_artifacts/ as a volume)
+docker-compose up
+```
+
+The API is then available at `http://localhost:5000`. Place a trained `.keras` file in `models_artifacts/` before starting the container.
+
+---
+
+## CI
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` runs on every push and pull-request to `main`:
+
+- Lints with **ruff** (`src/`, `tests/`, `scripts/`)
+- Runs all TensorFlow-free tests with **pytest** (TF tests are excluded from CI to keep runtime under 3 minutes)
+
+Replace `<owner>/<repo>` in the badge URL at the top of this file with your GitHub repository path.
+
+---
+
+## Known Limitations
+
+- **Python 3.9–3.12 required for TF**: TensorFlow publishes no wheel for Python 3.13+. Tests that do not require TF pass on any Python ≥ 3.9.
+- **File-level split leakage**: Train/test splitting is done at the image-file level. If the NIH dataset contains multiple images from the same patient, the same patient may appear in both splits, making evaluation metrics optimistic. A patient-level split would require external patient-ID metadata.
+- **8 MB upload cap**: The API rejects uploads larger than 8 MB at the route level. Very high-resolution microscopy images must be resized before submission.

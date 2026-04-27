@@ -19,6 +19,7 @@ if __name__ == "__main__":
         data_config=data_config,
         preprocess_config=preprocess_config,
         train_config=train_config,
+        processed_dir=Path("data") / "processed",
     )
     print(f"Saved model: {(train_config.model_dir / train_config.model_name).resolve()}")
     print(f"Saved history: {(train_config.model_dir / train_config.history_name).resolve()}")

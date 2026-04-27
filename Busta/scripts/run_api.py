@@ -12,7 +12,8 @@ def main() -> None:
     model = load_model_for_inference(MODEL_PATH)
     preprocessor = Preprocessor(config=PreprocessConfig())
     app = create_app(model=model, preprocessor=preprocessor)
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    print("Malaria Screening API running at http://localhost:5000")
+    app.run(host="0.0.0.0", port=5000, debug=False)
 
 
 if __name__ == "__main__":

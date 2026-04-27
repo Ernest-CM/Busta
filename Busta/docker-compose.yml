@@ -1,0 +1,7 @@
+services:
+  malaria-api:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./models_artifacts:/app/models_artifacts

@@ -1,0 +1,10 @@
+data/raw
+data/interim
+__pycache__
+**/__pycache__
+.pytest_cache
+**/.pytest_cache
+*.pyc
+**/*.pyc
+notebooks/
+tests/

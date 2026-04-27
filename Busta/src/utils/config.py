@@ -7,6 +7,10 @@ LABEL_MAP: Dict[str, int] = {
     "Uninfected": 0,
 }
 
+AUGMENTATION_SEED: int = 42
+TRANSFER_BASE_MODEL: str = "mobilenetv2"
+FINE_TUNE_LAYERS: int = 30
+
 VALID_IMAGE_EXTENSIONS: Tuple[str, ...] = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
 
 

@@ -11,5 +11,7 @@ seaborn==0.13.2
 tqdm==4.66.4
 Flask==3.0.3
 Werkzeug==3.0.3
+Flask-Limiter==3.12
+Flask-Cors==4.0.2
 python-dotenv==1.0.1
 imbalanced-learn==0.12.3

@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data — raw images and large binaries never go in git
+data/raw/cell_images/
+data/raw/*.zip
+data/interim/
+data/processed/*.npy
+data/processed/*.npz
+
+# Model artifacts — large binary files
+models_artifacts/*.keras
+models_artifacts/*.h5
+models_artifacts/*.pb
+models_artifacts/training_history.json
+models_artifacts/evaluation_metrics.json
+models_artifacts/confusion_matrix.csv
+models_artifacts/benchmark/
+models_artifacts/eval/
+
+# Keep the directory structure
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!models_artifacts/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Claude
+.claude/scheduled_tasks.lock
